@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小猫踩琴块</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { height: 100vh; display: flex; align-items: center; justify-content: center; background: #bfe3ff; font-family: sans-serif; overflow: hidden; }
+#wrap { position: relative; width: 100vw; max-width: 400px; height: 100vh; max-height: 700px; background: #eaf6ff; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; color: #1e4a72; pointer-events: none; }
+.pill { background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 20px; }
+.overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(234,246,255,0.95); z-index: 10; text-align: center; padding: 20px; }
+.overlay.hide { display: none; }
+h1 { color: #1e4a72; font-size: 22px; margin-bottom: 10px; }
+p { color: #5b87ad; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+button { padding: 12px 30px; border: none; border-radius: 15px; background: #93c5fd; color: #fff; font-size: 16px; font-weight: bold; margin: 5px; cursor: pointer; box-shadow: 0 5px 15px rgba(147,197,253,0.4); }
+#nextLevelOverlay img { max-width: 90%; max-height: 60%; border-radius: 15px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="c"></canvas>
+<div id="hud"><span class="pill" id="note">♪ 音乐</span><span class="pill" id="score">0 / 24</span></div>
+
+<div class="overlay" id="startScreen">
+<h1>🐱 小猫踩琴块</h1>
+<p>点哪条跑道，小猫去哪条<br>踩中黑块得分，踩空结束</p >
+<button onclick="startGame()">开始游戏</button>
+</div>
+
+<div class="overlay hide" id="winScreen">
+<h1>🎉 通关啦！</h1>
+<p>你收集了生日快乐歌的所有音符！</p >
+<button onclick="startGame()">再玩一次</button>
+<button onclick="showNext()">下一关</button>
+</div>
+
+<div class="overlay hide" id="nextLevelOverlay">
+< img src="next.jpg" alt="图未找到">
+<button onclick="closeNext()">返回</button>
+</div>
+</div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const scoreEl = document.getElementById('score');
+let W, H, laneW, lanes, player, rows, steps, running, lastTime, speed;
+const song = [392,392,440,392,523,493,392,392,440,392,587,523,392,392,659,587,523,493,440,698,698,659,523,587,523];
+
+function resize() {
+  let rect = cv.parentElement.getBoundingClientRect();
+  cv.width = rect.width * 2; cv.height = rect.height * 2;
+  W = rect.width; H = rect.height; laneW = W / 3;
+  ctx.scale(2,2);
+}
+window.onresize = resize; resize();
+
+let actx;
+function beep(f) {
+  if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  let o = actx.createOscillator(), g = actx.createGain();
+  o.frequency.value = f; o.connect(g); g.connect(actx.destination);
+  g.gain.setValueAtTime(0.2, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.3);
+  o.start(); o.stop(actx.currentTime + 0.3);
+}
+
+function startGame() {
+  document.getElementById('startScreen').classList.add('hide');
+  document.getElementById('winScreen').classList.add('hide');
+  document.getElementById('nextLevelOverlay').classList.add('hide');
+  lanes = [laneW*0.5, laneW*1.5, laneW*2.5];
+  player = { x: laneW*1.5, y: H*0.75 };
+  rows = []; steps = 0; running = true; speed = 3;
+  scoreEl.innerText = "0 / 24";
+  for(let i=0; i<8; i++) addRow(-i*90);
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function addRow(y) {
+  let l1 = rows[rows.length-1], l2 = rows[rows.length-2];
+  let forb = (l1 && l2 && l1.l === l2.l) ? l1.l : -1;
+  let opts = [0,1,2].filter(n => n !== forb);
+  let l = opts[Math.floor(Math.random()*opts.length)];
+  rows.push({l, y, p:false});
+}
+
+cv.onmousedown = cv.ontouchstart = (e) => {
+  if(!running) return;
+  let x = (e.touches ? e.touches[0].clientX : e.clientX) - cv.getBoundingClientRect().left;
+  let l = Math.floor(x / laneW);
+  if(l<0) l=0; if(l>2) l=2;
+  player.x = lanes[l];
+};
+
+function loop(t) {
+  if(!running) return;
+  let dt = (t - lastTime) / 16; lastTime = t;
+  rows.forEach(r => r.y += speed * dt);
+  for(let r of rows) {
+    if(!r.p && player.y > r.y && player.y < r.y + 90) {
+      r.p = true;
+      if(lanes.indexOf(player.x) === r.l) {
+        beep(song[steps]);
+        steps++;
+        scoreEl.innerText = steps + " / 24";
+        if(steps >= 24) {
+          running = false;
+          document.getElementById('winScreen').classList.remove('hide');
+          return;
+        }
+      } else {
+        running = false;
+        setTimeout(() => { alert("踩空啦！"); startGame(); }, 50);
+        return;
+      }
+    }
+  }
+  rows = rows.filter(r => r.y < H + 100);
+  while(rows.length < 9) addRow(rows[rows.length-1].y - 90);
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = "#eaf6ff"; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = "#b8dcf8"; ctx.lineWidth = 2;
+  for(let i=1; i<3; i++) { ctx.beginPath(); ctx.moveTo(i*laneW,0); ctx.lineTo(i*laneW,H); ctx.stroke(); }
+
+  rows.forEach(r => {
+    ctx.fillStyle = "#2b2b2b";
+    ctx.beginPath(); ctx.roundRect(lanes[r.l] - laneW*0.3, r.y + 10, laneW*0.6, 70, 8); ctx.fill();
+  });
+
+  // 画小猫
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(player.x-15, player.y-20, 30, 40, 10); ctx.fill();
+  ctx.strokeStyle = "#93c5fd"; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = "#1e4a72"; ctx.beginPath(); ctx.arc(player.x-5, player.y-5, 2, 0, 7); ctx.arc(player.x+5, player.y-5, 2, 0, 7); ctx.fill();
+
+  requestAnimationFrame(loop);
+}
+
+function showNext() { document.getElementById('winScreen').classList.add('hide'); document.getElementById('nextLevelOverlay').classList.remove('hide'); }
+function closeNext() { document.getElementById('nextLevelOverlay').classList.add('hide'); document.getElementById('startScreen').classList.remove('hide'); }
+</script>
+</body>
+</html>
