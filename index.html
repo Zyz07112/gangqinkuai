@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>小猫踩琴块</title>
+<title>钢琴快</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { height: 100vh; display: flex; align-items: center; justify-content: center; background: #bfe3ff; font-family: sans-serif; overflow: hidden; }
@@ -25,8 +25,8 @@ button { padding: 12px 30px; border: none; border-radius: 15px; background: #93c
 <div id="hud"><span class="pill" id="note">♪ 音乐</span><span class="pill" id="score">0 / 24</span></div>
 
 <div class="overlay" id="startScreen">
-<h1>🐱 小猫踩琴块</h1>
-<p>点哪条跑道，小猫去哪条<br>踩中黑块得分，踩空结束</p >
+<h1>🐱 钢琴块</h1>
+<p>点哪条跑道，就去哪条<br>踩中黑块得分，踩空结束</p >
 <button onclick="startGame()">开始游戏</button>
 </div>
 
@@ -132,7 +132,7 @@ function loop(t) {
     ctx.beginPath(); ctx.roundRect(lanes[r.l] - laneW*0.3, r.y + 10, laneW*0.6, 70, 8); ctx.fill();
   });
 
-  // 画小猫
+  // 
   ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(player.x-15, player.y-20, 30, 40, 10); ctx.fill();
   ctx.strokeStyle = "#93c5fd"; ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = "#1e4a72"; ctx.beginPath(); ctx.arc(player.x-5, player.y-5, 2, 0, 7); ctx.arc(player.x+5, player.y-5, 2, 0, 7); ctx.fill();
